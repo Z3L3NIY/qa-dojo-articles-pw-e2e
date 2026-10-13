@@ -1,34 +1,13 @@
-import { test, expect, Page } from "@playwright/test";
-
-const uniqueUser = () =>
-    `student-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const uniqueEmail = (userName: string) => `${userName}@example.com`;
-
-async function registerUser(
-    page: Page,
-    username: string,
-    email: string,
-    password: string = "ValidPassword123!",
-) {
-    await page.goto("/register");
-    await page.getByTestId("auth-username").fill(username);
-    await page.getByTestId("auth-email").fill(email);
-    await page.getByTestId("auth-password").fill(password);
-    await page.getByTestId("register-confirm-password").fill(password);
-    await page.getByTestId("register-terms").check();
-    await page.getByTestId("auth-submit").click();
-}
-
-async function signInUser(
-    page: Page,
-    email: string,
-    password: string = "ValidPassword123!",
-) {
-    await page.goto("/login");
-    await page.getByTestId("auth-email").fill(email);
-    await page.getByTestId("auth-password").fill(password);
-    await page.getByTestId("auth-submit").click();
-}
+import { test, expect, Page, Locator } from "@playwright/test";
+import {
+    uniqueUser,
+    uniqueEmail,
+    registerUser,
+    signInUser,
+    logOutUser,
+    followUser,
+    createArticle,
+} from "./page-actions";
 
 test.describe("Registration", { tag: "@auth" }, () => {
     test("Registration with unique credentials", async ({ page }) => {
@@ -64,7 +43,7 @@ test.describe("Registration", { tag: "@auth" }, () => {
     });
 
     test("Registration with empty data", async ({ page }) => {
-        await page.goto("/register");
+        await page.goto("/articles/register");
         await page.getByTestId("register-terms").check();
         await page.getByTestId("auth-submit").click();
 
@@ -121,5 +100,60 @@ test.describe("Login", { tag: "@auth" }, () => {
         await expect(
             page.getByText("email or password неправильні"),
         ).toBeVisible();
+    });
+});
+
+test.describe("Articles manipulation", async () => {
+    test("Multiple articles creation", async ({ page }) => {
+        const articlesUserName = uniqueUser();
+        const articlesEmail = uniqueEmail(articlesUserName);
+        const feedUserName = uniqueUser();
+        const feedEmail = uniqueEmail(feedUserName);
+        const titles = [];
+        const runId = Date.now();
+
+        const profileLink: Locator = page.getByTestId("nav-profile");
+        const createdArticlePageTitle: Locator =
+            page.getByTestId("article-title");
+        const articlePreviewTitle: Locator = page.getByTestId("preview-title");
+
+        await registerUser(page, articlesUserName, articlesEmail);
+        await page.waitForURL("/articles");
+        await expect(page.getByText(`${articlesUserName}`)).toBeVisible();
+
+        for (let i = 1; i <= 10; ++i) {
+            const title = `Article-${runId}-${i}`;
+            await createArticle(
+                page,
+                title,
+                "Description",
+                "Body",
+                ["tag1", "tag2"],
+                2,
+                1,
+                true,
+            );
+            titles.push(title);
+            await expect(createdArticlePageTitle).toHaveText(title);
+        }
+
+        await logOutUser(page);
+        await registerUser(page, feedUserName, feedEmail);
+        await followUser(page, articlesUserName);
+
+        await page.goto("/articles");
+        await expect.poll(() => articlePreviewTitle.count()).toBe(10);
+        for (const title of titles) {
+            await expect
+                .soft(
+                    page.getByRole("heading", {
+                        level: 2,
+                        name: title,
+                        exact: true,
+                    }),
+                    `${title} is not created`,
+                )
+                .toBeVisible();
+        }
     });
 });
