@@ -2,6 +2,8 @@ import { Locator, Page } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 
+//TODO ADD PASSWORD USING .env
+
 export const uniqueUser = () =>
     `student-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 export const uniqueEmail = (userName: string) => `${userName}@example.com`;
@@ -12,7 +14,7 @@ export async function registerUser(
     email: string,
     password: string = "ValidPassword123!",
 ) {
-    await page.goto("register");
+    await page.goto("/articles/register");
     await page.getByTestId("auth-username").fill(username);
     await page.getByTestId("auth-email").fill(email);
     await page.getByTestId("auth-password").fill(password);
@@ -26,10 +28,31 @@ export async function signInUser(
     email: string,
     password: string = "ValidPassword123!",
 ) {
-    await page.goto("login");
+    await page.goto("/articles/login");
     await page.getByTestId("auth-email").fill(email);
     await page.getByTestId("auth-password").fill(password);
     await page.getByTestId("auth-submit").click();
+}
+
+export async function logOutUser(page: Page) {
+    const profileLink: Locator = page.getByTestId("nav-profile");
+    const editProfileLink: Locator = page.getByRole("link", {
+        name: "Edit profile",
+    });
+    const logOutButton: Locator = page.getByTestId("logout-button");
+
+    await profileLink.click();
+    await editProfileLink.click();
+    await logOutButton.click();
+}
+
+export async function followUser(page: Page, userName: string) {
+    const profileFollowButton: Locator = page.getByTestId(
+        "profile-follow-button",
+    );
+
+    await page.goto(`/articles/profile/${userName}}`);
+    await profileFollowButton.click();
 }
 
 export async function createArticle(

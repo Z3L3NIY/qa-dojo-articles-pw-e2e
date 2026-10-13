@@ -4,6 +4,8 @@ import {
     uniqueEmail,
     registerUser,
     signInUser,
+    logOutUser,
+    followUser,
     createArticle,
 } from "./page-actions";
 
@@ -41,7 +43,7 @@ test.describe("Registration", { tag: "@auth" }, () => {
     });
 
     test("Registration with empty data", async ({ page }) => {
-        await page.goto("/register");
+        await page.goto("/articles/register");
         await page.getByTestId("register-terms").check();
         await page.getByTestId("auth-submit").click();
 
@@ -103,17 +105,21 @@ test.describe("Login", { tag: "@auth" }, () => {
 
 test.describe("Articles manipulation", async () => {
     test("Multiple articles creation", async ({ page }) => {
-        const userName = uniqueUser();
-        const email = uniqueEmail(userName);
+        const articlesUserName = uniqueUser();
+        const articlesEmail = uniqueEmail(articlesUserName);
+        const feedUserName = uniqueUser();
+        const feedEmail = uniqueEmail(feedUserName);
         const titles = [];
         const runId = Date.now();
 
         const profileLink: Locator = page.getByTestId("nav-profile");
+        const createdArticlePageTitle: Locator =
+            page.getByTestId("article-title");
         const articlePreviewTitle: Locator = page.getByTestId("preview-title");
 
-        await registerUser(page, userName, email);
+        await registerUser(page, articlesUserName, articlesEmail);
         await page.waitForURL("/articles");
-        await expect(page.getByText(`${userName}`)).toBeVisible();
+        await expect(page.getByText(`${articlesUserName}`)).toBeVisible();
 
         for (let i = 1; i <= 10; ++i) {
             const title = `Article-${runId}-${i}`;
@@ -128,16 +134,26 @@ test.describe("Articles manipulation", async () => {
                 true,
             );
             titles.push(title);
-            await page.waitForURL(
-                `/articles/article/${title.toLocaleLowerCase()}`,
-            );
+            await expect(createdArticlePageTitle).toHaveText(title);
         }
 
-        await profileLink.click();
+        await logOutUser(page);
+        await registerUser(page, feedUserName, feedEmail);
+        await followUser(page, articlesUserName);
+
+        await page.goto("/articles");
         await expect.poll(() => articlePreviewTitle.count()).toBe(10);
-        const profileArticlesTitles = await articlePreviewTitle.allTextContents();
         for (const title of titles) {
-            expect(profileArticlesTitles.includes(title)).toBeTruthy();
+            await expect
+                .soft(
+                    page.getByRole("heading", {
+                        level: 2,
+                        name: title,
+                        exact: true,
+                    }),
+                    `${title} is not created`,
+                )
+                .toBeVisible();
         }
     });
 });
