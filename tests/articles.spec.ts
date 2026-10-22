@@ -7,7 +7,12 @@ import {
     logOutUser,
     followUser,
     createArticle,
-} from "./page-actions";
+    sendFeedbackForm,
+} from "./actions";
+import {
+    getFeedbackPageLocators,
+    FeedbackPageLocators,
+} from "../helpers/feedback-page";
 
 test.describe("Registration", { tag: "@auth" }, () => {
     test("Registration with unique credentials", async ({ page }) => {
@@ -156,4 +161,73 @@ test.describe("Articles manipulation", async () => {
                 .toBeVisible();
         }
     });
+});
+
+test.describe("Feedback form", async () => {
+    const testsData = [
+        {
+            title: "Send form with all possible data",
+            name: "Required name",
+            email: "required@email.com",
+            subject: "bug",
+            priority: "low",
+            message: "Required message.",
+            file: "dummy-logo.jpg",
+            copyMe: true,
+            verify: async (
+                locators: FeedbackPageLocators,
+                testData: { email?: string },
+            ) => {
+                await expect(locators.successTitle()).toBeVisible();
+                await expect(
+                    locators.successMessage(testData.email!),
+                ).toBeVisible();
+                await expect(locators.sendMoreButton()).toBeVisible();
+            },
+        },
+        {
+            title: "Send form with only required data",
+            name: "Required name",
+            email: "required@email.com",
+            message: "Required message.",
+            verify: async (
+                locators: FeedbackPageLocators,
+                testData: { email?: string },
+            ) => {
+                await expect(locators.successTitle()).toBeVisible();
+                await expect(
+                    locators.successMessage(testData.email!),
+                ).toBeVisible();
+                await expect(locators.sendMoreButton()).toBeVisible();
+            },
+        },
+        {
+            title: "Send form with only optional data",
+            subject: "bug",
+            priority: "low",
+            file: "dummy-logo.jpg",
+            copyMe: true,
+            verify: async (locators: FeedbackPageLocators) => {
+                await expect(locators.errorMessages().locator("p")).toHaveText([
+                    "name обов'язкове поле",
+                    "email некоректний email",
+                    "message обов'язкове поле",
+                ]);
+            },
+        },
+    ];
+
+    test.beforeEach("Open feedback form", async ({ page }) => {
+        await page.goto("/articles/contact");
+    });
+
+    for (const testData of testsData) {
+        test(`${testData.title}`, async ({ page }) => {
+            const locators = getFeedbackPageLocators(page);
+
+            await sendFeedbackForm(locators, testData);
+
+            await testData.verify(locators, testData);
+        });
+    }
 });
