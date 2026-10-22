@@ -1,6 +1,7 @@
 import { Locator, Page } from "@playwright/test";
 import path from "path";
 import fs from "fs";
+import { FeedbackPageLocators } from "../helpers/feedback-page";
 
 //TODO ADD PASSWORD USING .env
 
@@ -74,7 +75,7 @@ export async function createArticle(
         "news",
     ];
     const visibilities: Array<string> = ["public", "unlisted", "draft"];
-    const imagePath: string = path.resolve(__dirname, `./fixtures/${file}`);
+    const imagePath: string = path.resolve(__dirname, `../fixtures/${file}`);
 
     const newArticleLink: Locator = page.getByRole("link", {
         name: "New article",
@@ -127,4 +128,57 @@ export async function createArticle(
         await fileInput.setInputFiles(imagePath);
     }
     await submitButton.click();
+}
+
+// "test title": "Send form with all possible data",
+// name: "Required name",
+// email: "required@email.com",
+// subject: "bug",
+// priority: "low",
+// message: "Required message.",
+// file: "dummy-logo.jpg",
+// copyMe: true,
+// verify: async () => {},
+
+export async function sendFeedbackForm(
+    locators: FeedbackPageLocators,
+    testData: {
+        name?: string;
+        email?: string;
+        subject?: string;
+        priority?: string;
+        message?: string;
+        file?: string;
+        copyMe?: boolean;
+    },
+) {
+    if (testData.name !== undefined) {
+        await locators.nameInput().fill(testData.name);
+    }
+    if (testData.email !== undefined) {
+        await locators.emailInput().fill(testData.email);
+    }
+    if (testData.subject !== undefined) {
+        await locators.subjectInput().selectOption(testData.subject);
+    }
+    if (testData.priority !== undefined) {
+        await locators.priorityRadio(testData.priority).click();
+    }
+    if (testData.message !== undefined) {
+        await locators.messageTextarea().fill(testData.message);
+    }
+
+    const imagePath: string = path.resolve(
+        __dirname,
+        `../fixtures/${testData.file}`,
+    );
+    if (fs.existsSync(imagePath)) {
+        await locators.fileInput().setInputFiles(imagePath);
+    }
+
+    if (testData.copyMe !== undefined && testData.copyMe === true) {
+        await locators.copyMeCheckbox().click();
+    }
+
+    await locators.submitButton().click();
 }
