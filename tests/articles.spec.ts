@@ -30,6 +30,25 @@ test.describe("Registration", { tag: "@auth" }, () => {
         await expect(page.getByText(`${userName}`)).toBeVisible();
     });
 
+    test("Registered user has a public profile", async ({ browser }) => {
+        const userName = uniqueUser();
+        const email = uniqueEmail(userName);
+
+        const regContext = await browser.newContext();
+        const regPage = await regContext.newPage();
+        await registerUser(regPage, userName, email);
+        await regPage.waitForURL("/articles");
+
+        const viewerContext = await browser.newContext();
+        const viewerPage = await viewerContext.newPage();
+        await viewerPage.goto(`/articles/profile/${userName}`);
+
+        await expect(
+            viewerPage.getByRole("heading", { level: 1, name: userName }),
+        ).toBeVisible();
+        await expect(viewerPage.getByText("No articles here yet.")).toBeVisible();
+    });
+
     test("Registration with used email", async ({ browser }) => {
         const userName = uniqueUser();
         const email = uniqueEmail(userName);
@@ -157,6 +176,52 @@ test.describe("Articles manipulation", async () => {
                         exact: true,
                     }),
                     `${title} is not created`,
+                )
+                .toBeVisible();
+        }
+    });
+});
+
+test.describe("Articles search", async () => {
+    test("Each created article is found in search", async ({ page }) => {
+        const titles: Array<string> = [];
+        const runId = Date.now();
+
+        await signInUser(page, "olena@example.com", "password");
+        await page.waitForURL("/articles");
+        await expect(page.getByTestId("nav-profile")).toHaveText("olena");
+
+        for (let i = 1; i <= 10; ++i) {
+            const title = `Search-${runId}-${i}`;
+            await createArticle(
+                page,
+                title,
+                "Description",
+                "Body",
+                ["search"],
+                0,
+                0,
+                true,
+            );
+            await expect(page.getByTestId("article-title")).toHaveText(title);
+            titles.push(title);
+        }
+
+        await page.goto("/articles");
+        await page.getByTestId("feed-tab-global").click();
+
+        for (const title of titles) {
+            await page.getByTestId("home-search-input").fill(title);
+            await page.getByTestId("home-filter-apply").click();
+
+            await expect
+                .soft(
+                    page.getByRole("heading", {
+                        level: 2,
+                        name: title,
+                        exact: true,
+                    }),
+                    `${title} is not found in search`,
                 )
                 .toBeVisible();
         }
