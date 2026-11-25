@@ -4,9 +4,9 @@ import { defineConfig, devices } from "@playwright/test";
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -24,10 +24,11 @@ export default defineConfig({
     /* Reporter to use. See https://playwright.dev/docs/test-reporters */
     reporter: "html",
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+    globalSetup: "./global-setup.ts",
     use: {
         /* Base URL to use in actions like `await page.goto('')`. */
         baseURL: "http://104.168.59.50",
-
+        storageState: "playwright/.auth/user.json",
         /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
         trace: "retain-on-failure",
     },
