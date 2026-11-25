@@ -46,7 +46,9 @@ test.describe("Registration", { tag: "@auth" }, () => {
         await expect(
             viewerPage.getByRole("heading", { level: 1, name: userName }),
         ).toBeVisible();
-        await expect(viewerPage.getByText("No articles here yet.")).toBeVisible();
+        await expect(
+            viewerPage.getByText("No articles here yet."),
+        ).toBeVisible();
     });
 
     test("Registration with used email", async ({ browser }) => {
@@ -295,4 +297,11 @@ test.describe("Feedback form", async () => {
             await testData.verify(locators, testData);
         });
     }
+});
+
+test.describe("globalSetup is used", async () => {
+    test("test", async ({ page }) => {
+        await page.goto("/articles");
+        await expect(page.getByTestId("nav-profile")).toHaveText("olena");
+    });
 });
